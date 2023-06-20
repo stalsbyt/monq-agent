@@ -1,0 +1,81 @@
+---
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  ORG: stalsbyt
+  REGISTRY: ghcr.io/stalsbyt
+  IMAGE_NAME: monq-agent
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: write
+      issues: read
+      pull-requests: read
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Configure Git
+        shell: bash
+        run: |
+          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Helm Chart Releaser
+        uses: helm/chart-releaser-action@db5211eb38c65dcd18cbb57e987df03fce2a40f9
+        env:
+          CR_SKIP_EXISTING: "false"
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          charts_dir: charts
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.1.0
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        if: always()
+        uses: ncipollo/release-action@v1
+        with:
+          name: ${{ env.IMAGE_NAME }} v${{ github.ref_name }}
+          body: |
+            Changes in this Release:
+            ${{ steps.changelog.outputs.changelog }}
+            
+            Installation:
+            `helm repo add monq-agent https://stalsbyt.github.io/monq-agent`
+            `helm upgrade --install ${{ env.IMAGE_NAME }} ${{ env.IMAGE_NAME }} --repo https://github.io/${{ env.ORG }}/${{ env.IMAGE_NAME }} --namespace monq --create-namespace`

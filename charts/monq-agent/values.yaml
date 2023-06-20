@@ -1,0 +1,55 @@
+## Overrides for generated resource names
+# See templates/_helpers.tpl
+# nameOverride:
+# fullnameOverride:
+
+# Agent configuration
+config:
+  # Instance uri connect to
+  baseUri: ""
+  # Instance Api key
+  apiKey: ""
+  # File storage path
+  fileStorage: ""
+  # Connection timeout
+  timeout: 100
+  # plugins path
+  pluginsPath: "plugins"
+  # Connection retrying count
+  retryCount: 10
+  # Number of executers
+  slotsCount: 2
+
+replicas: 1
+
+image:
+  repository: ghcr.io/stalsbyt
+  name: monq-agent
+  pullPolicy: IfNotPresent
+#  tag: 2.3
+
+# -- Optional array of imagePullSecrets containing private registry credentials
+## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+
+## Define requests resources to avoid probe issues due to CPU utilization in busy nodes
+resources:
+#  limits:
+#    cpu: 500m
+#    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# -- Node labels for agent pod assignment
+## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+##
+nodeSelector:
+  kubernetes.io/os: linux
+
+
+
+
+
+
+
